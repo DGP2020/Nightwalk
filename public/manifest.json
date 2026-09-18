@@ -1,0 +1,16 @@
+{
+  "name": "Guardian Beacon",
+  "short_name": "Guardian",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#dc2626",
+  "description": "Shake-to-SOS and live location sharing for safer night walks.",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+      "sizes": "25x41",
+      "type": "image/png"
+    }
+  ]
+}
