@@ -24,33 +24,55 @@ const TrustedContacts = ({ onContactsChange }) => {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount safely
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setContacts(parsed);
-      onContactsChange?.(parsed);
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setContacts(parsed);
+          onContactsChange?.(parsed);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load trusted contacts from localStorage:', err);
     }
   }, []);
 
   const save = (updated) => {
-    setContacts(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    onContactsChange?.(updated);
+    try {
+      setContacts(updated);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      onContactsChange?.(updated);
+    } catch (err) {
+      console.error('Failed to save trusted contacts to localStorage:', err);
+      setError('Failed to save to local storage.');
+    }
   };
 
   const addContact = () => {
     setError('');
-    if (!name.trim() || !phone.trim()) {
+    const trimmedName = name.trim().slice(0, 40);
+    const trimmedPhone = phone.trim().slice(0, 25);
+
+    if (!trimmedName || !trimmedPhone) {
       setError('Both name and phone are required.');
       return;
     }
+
+    // Basic digit validation to ensure WhatsApp deep-link works properly
+    const digitsOnly = trimmedPhone.replace(/\D/g, '');
+    if (digitsOnly.length < 7) {
+      setError('Please enter a valid phone number (minimum 7 digits).');
+      return;
+    }
+
     if (contacts.length >= 3) {
       setError('Max 3 trusted contacts allowed.');
       return;
     }
-    const updated = [...contacts, { name: name.trim(), phone: phone.trim() }];
+    const updated = [...contacts, { name: trimmedName, phone: trimmedPhone }];
     save(updated);
     setName('');
     setPhone('');
@@ -113,6 +135,8 @@ const TrustedContacts = ({ onContactsChange }) => {
             type="text"
             placeholder="Contact name"
             value={name}
+            maxLength={40}
+            autoComplete="off"
             onChange={(e) => setName(e.target.value)}
             className="w-full bg-white/5 text-white placeholder-gray-600 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-500 border border-white/10"
           />
@@ -120,6 +144,8 @@ const TrustedContacts = ({ onContactsChange }) => {
             type="tel"
             placeholder="Phone with country code (+91...)"
             value={phone}
+            maxLength={25}
+            autoComplete="off"
             onChange={(e) => setPhone(e.target.value)}
             className="w-full bg-white/5 text-white placeholder-gray-600 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-500 border border-white/10"
           />
@@ -140,6 +166,13 @@ export default TrustedContacts;
 
 // Helper to load contacts without rendering the component (used by SOSOverlay / shareAlert)
 export const loadTrustedContacts = () => {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  return saved ? JSON.parse(saved) : [];
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.warn('Failed to parse trusted contacts from localStorage:', err);
+    return [];
+  }
 };

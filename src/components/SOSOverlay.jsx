@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, X, Share2, MapPin, CheckCircle, Clock, Wifi } from 'lucide-react';
 import { useSOSSession } from '../hooks/useSOSSession';
-import { shareAlert } from '../utils/shareAlert';
+import { shareAlert, buildWhatsAppUrl, safeOpen } from '../utils/shareAlert';
 import { loadTrustedContacts } from './TrustedContacts';
 
 /**
@@ -14,6 +14,14 @@ const SOSOverlay = ({ isActive, onClose }) => {
   const [shared, setShared] = useState(false);
   const [shareError, setShareError] = useState('');
   const [elapsed, setElapsed] = useState(0);
+  const [contacts, setContacts] = useState([]);
+
+  // Load contacts whenever SOS activates
+  useEffect(() => {
+    if (isActive) {
+      setContacts(loadTrustedContacts());
+    }
+  }, [isActive]);
 
   // Live elapsed-time clock — resets when SOS closes
   useEffect(() => {
@@ -34,8 +42,6 @@ const SOSOverlay = ({ isActive, onClose }) => {
       return;
     }
 
-    const contacts = loadTrustedContacts();
-
     try {
       const result = await shareAlert(beaconUrl, contacts);
       setShared(true);
@@ -44,6 +50,12 @@ const SOSOverlay = ({ isActive, onClose }) => {
       setShareError('Could not share. Try copying the link manually.');
       console.error(err);
     }
+  };
+
+  const handleDirectWhatsApp = (phone) => {
+    if (!beaconUrl) return;
+    const url = buildWhatsAppUrl(phone, beaconUrl);
+    safeOpen(url);
   };
 
   const handleImSafe = async () => {
@@ -112,11 +124,30 @@ const SOSOverlay = ({ isActive, onClose }) => {
             <a
               href={beaconUrl}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="text-white underline"
             >
               {beaconUrl}
             </a>
+          </div>
+        )}
+
+        {/* Multi-Contact Direct WhatsApp Buttons if multiple contacts exist */}
+        {contacts && contacts.length > 1 && (
+          <div className="bg-white/10 backdrop-blur-sm p-3 rounded-xl space-y-2 text-left">
+            <p className="text-xs font-semibold text-white/80">Direct WhatsApp Dispatch:</p>
+            <div className="flex flex-wrap gap-2">
+              {contacts.map((c, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => handleDirectWhatsApp(c.phone)}
+                  className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all active:scale-95"
+                >
+                  💬 Alert {c.name}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -133,7 +164,7 @@ const SOSOverlay = ({ isActive, onClose }) => {
           className="w-full bg-white text-red-600 hover:bg-gray-100 font-bold py-4 px-6 rounded-full shadow-2xl flex items-center justify-center gap-2 text-lg transition-transform active:scale-95"
         >
           {shared ? <CheckCircle size={22} /> : <Share2 size={22} />}
-          <span>{shared ? 'Alert Sent! Send Again?' : '🆘 Alert My Contacts'}</span>
+          <span>{shared ? 'Alert Sent! Share Again?' : '🆘 Alert My Contacts'}</span>
         </button>
 
         {/* I'm Safe button */}

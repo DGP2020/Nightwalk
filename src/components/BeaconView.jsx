@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
@@ -120,7 +120,7 @@ const BeaconView = ({ sessionId }) => {
   if (error) {
     return (
       <div className="fixed inset-0 bg-gray-900 text-white flex flex-col items-center justify-center gap-4 p-6 text-center">
-        <div className="text-6xl mb-4">âŒ</div>
+        <div className="text-6xl mb-4">❌</div>
         <h1 className="text-2xl font-bold text-red-500">Tracking Unavailable</h1>
         <p className="text-gray-400 max-w-md">{error}</p>
       </div>
@@ -132,7 +132,7 @@ const BeaconView = ({ sessionId }) => {
     return (
       <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-emerald-950 text-white flex flex-col items-center justify-center gap-4 p-6 text-center">
         <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4">
-          <div className="text-6xl">âœ…</div>
+          <div className="text-6xl">✅</div>
         </div>
         <h1 className="text-3xl font-bold text-emerald-400">They're Safe</h1>
         <p className="text-emerald-100/70 text-lg max-w-md">
@@ -141,6 +141,14 @@ const BeaconView = ({ sessionId }) => {
       </div>
     );
   }
+
+  // Check if signal has updated in the last 45 seconds
+  const lastUpdateDate = sessionData?.lastUpdated?.toDate
+    ? sessionData.lastUpdated.toDate()
+    : sessionData?.lastUpdated
+    ? new Date(sessionData.lastUpdated)
+    : null;
+  const isSignalLive = !lastUpdateDate || (Date.now() - lastUpdateDate.getTime() < 45000);
 
   // --- Live tracking state ---
   return (
@@ -153,21 +161,22 @@ const BeaconView = ({ sessionId }) => {
             <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
           </span>
           <div>
-            <p className="font-bold text-sm tracking-wide">ðŸš¨ LIVE SOS TRACKING</p>
+            <p className="font-bold text-sm tracking-wide">🚨 LIVE SOS TRACKING</p>
             {position && (
-              <p className="text-xs text-red-200">
+              <p className="text-xs text-red-200 font-mono">
                 {position[0].toFixed(5)}, {position[1].toFixed(5)}
               </p>
             )}
           </div>
         </div>
-        {/* Call Them button */}
+        {/* Call Emergency Police 112 button */}
         <a
           href="tel:112"
-          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 transition-colors px-3 py-1.5 rounded-full text-sm font-medium"
+          aria-label="Call National Emergency Hotline 112"
+          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 transition-colors px-3.5 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider"
         >
-          <Phone size={16} />
-          Call Them
+          <Phone size={15} />
+          Call Police (112)
         </a>
       </div>
 
@@ -194,14 +203,14 @@ const BeaconView = ({ sessionId }) => {
               />
             )}
             <Marker position={position} icon={redIcon}>
-              <Popup>ðŸ“ Live location</Popup>
+              <Popup>📍 Current GPS location</Popup>
             </Marker>
             <MapUpdater position={position} />
           </MapContainer>
         ) : (
           <div className="flex-grow flex items-center justify-center text-white h-full bg-gray-900">
             <p className="text-gray-400 flex items-center gap-2">
-              <span className="animate-pulse">ðŸ“¡</span> Waiting for GPS signal...
+              <span className="animate-pulse">📡</span> Waiting for GPS signal...
             </p>
           </div>
         )}
@@ -209,21 +218,24 @@ const BeaconView = ({ sessionId }) => {
         {/* Floating stats footer */}
         <div className="absolute bottom-4 left-4 right-4 bg-gray-900/90 backdrop-blur-sm rounded-2xl p-4 z-[1000] border border-gray-800 shadow-xl flex justify-between items-center pointer-events-none">
           <div className="flex flex-col">
-            <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Status</span>
-            <span className="text-white font-medium">Tracking Active</span>
+            <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Signal</span>
+            <span className="text-white font-medium flex items-center gap-1.5 text-xs">
+              <span className={`size-2 rounded-full ${isSignalLive ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+              {isSignalLive ? 'LIVE' : 'WAITING'}
+            </span>
           </div>
           <div className="flex flex-col items-center border-l border-gray-700 px-4">
-            <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Time</span>
+            <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Duration</span>
             <span className="text-red-400 font-bold">{elapsedTime}</span>
           </div>
           <div className="flex flex-col items-center border-l border-gray-700 px-4">
-            <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Updates</span>
+            <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Pings</span>
             <span className="text-white font-medium">{sessionData?.coords?.length || 0}</span>
           </div>
           {sessionData?.lastCoord?.accuracy && (
             <div className="flex flex-col items-end border-l border-gray-700 pl-4 hidden sm:flex">
               <span className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Accuracy</span>
-              <span className="text-white font-medium">Â±{Math.round(sessionData.lastCoord.accuracy)}m</span>
+              <span className="text-white font-medium font-mono">±{Math.round(sessionData.lastCoord.accuracy)}m</span>
             </div>
           )}
         </div>
