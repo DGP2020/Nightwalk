@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { AlertCircle, X, Share2, MapPin, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertCircle, X, Share2, MapPin, CheckCircle, Clock, Wifi } from 'lucide-react';
 import { useSOSSession } from '../hooks/useSOSSession';
 import { shareAlert } from '../utils/shareAlert';
 import { loadTrustedContacts } from './TrustedContacts';
 
 /**
- * SOSOverlay — full-screen SOS view.
+ * SOSOverlay — full-screen SOS view with enhanced UI.
  * Uses useSOSSession to manage Firestore session + live location.
  * Shares beacon URL to trusted contacts via WhatsApp/Web Share.
  */
@@ -13,6 +13,17 @@ const SOSOverlay = ({ isActive, onClose }) => {
   const { location, locationError, beaconUrl, firestoreError, endSession } = useSOSSession(isActive);
   const [shared, setShared] = useState(false);
   const [shareError, setShareError] = useState('');
+  const [elapsed, setElapsed] = useState(0);
+
+  // Live elapsed-time clock — resets when SOS closes
+  useEffect(() => {
+    if (!isActive) {
+      setElapsed(0);
+      return;
+    }
+    const timer = setInterval(() => setElapsed(prev => prev + 1), 1000);
+    return () => clearInterval(timer);
+  }, [isActive]);
 
   if (!isActive) return null;
 
@@ -38,28 +49,51 @@ const SOSOverlay = ({ isActive, onClose }) => {
   const handleImSafe = async () => {
     await endSession();
     setShared(false);
+    setElapsed(0);
     onClose();
   };
 
+  // Format elapsed seconds as MM:SS
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
   return (
-    <div className="fixed inset-0 z-[9999] bg-red-600 text-white flex flex-col items-center justify-center p-6">
+    <div className="fixed inset-0 z-[9999] bg-gradient-to-b from-red-700 via-red-600 to-red-900 text-white flex flex-col items-center justify-center p-6">
       {/* Close / I'm Safe button */}
       <button
         onClick={handleImSafe}
-        className="absolute top-6 right-6 p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+        className="absolute top-6 right-6 p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors backdrop-blur-sm"
         aria-label="End SOS"
       >
         <X size={28} />
       </button>
 
       <div className="text-center space-y-5 max-w-sm w-full">
-        {/* Pulsing icon */}
+        {/* Double-ring pulsing icon */}
         <div className="relative flex items-center justify-center">
-          <span className="absolute w-32 h-32 rounded-full bg-red-400 opacity-40 animate-ping-slow" />
-          <AlertCircle size={96} className="relative text-white" />
+          <span className="absolute w-36 h-36 rounded-full bg-red-400/30 animate-ping" style={{ animationDuration: '2s' }} />
+          <span className="absolute w-28 h-28 rounded-full bg-red-400/20 animate-ping" style={{ animationDuration: '2.5s' }} />
+          <AlertCircle size={80} className="relative text-white drop-shadow-2xl" />
         </div>
 
         <h1 className="text-5xl font-extrabold tracking-tight">SOS ACTIVE</h1>
+
+        {/* Status Row: elapsed clock + GPS accuracy */}
+        <div className="flex items-center justify-center gap-4 text-sm">
+          <div className="flex items-center gap-1 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full">
+            <Clock size={14} />
+            <span className="font-mono font-bold">{formatTime(elapsed)}</span>
+          </div>
+          <div className="flex items-center gap-1 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full">
+            <Wifi size={14} />
+            <span className="font-mono">
+              {location ? `±${Math.round(location.accuracy || 0)}m` : 'GPS...'}
+            </span>
+          </div>
+        </div>
 
         {/* GPS Coords */}
         <div className="bg-white/10 backdrop-blur-sm p-3 rounded-xl flex items-center justify-center gap-2">
@@ -88,7 +122,7 @@ const SOSOverlay = ({ isActive, onClose }) => {
 
         {/* Error states */}
         {(locationError || firestoreError || shareError) && (
-          <p className="text-sm bg-red-800 p-2 rounded-lg text-left">
+          <p className="text-sm bg-red-900/60 backdrop-blur-sm p-3 rounded-xl text-left">
             {locationError || firestoreError || shareError}
           </p>
         )}
@@ -99,13 +133,13 @@ const SOSOverlay = ({ isActive, onClose }) => {
           className="w-full bg-white text-red-600 hover:bg-gray-100 font-bold py-4 px-6 rounded-full shadow-2xl flex items-center justify-center gap-2 text-lg transition-transform active:scale-95"
         >
           {shared ? <CheckCircle size={22} /> : <Share2 size={22} />}
-          <span>{shared ? 'Alert Sent! Send Again?' : 'Alert My Contacts'}</span>
+          <span>{shared ? 'Alert Sent! Send Again?' : '🆘 Alert My Contacts'}</span>
         </button>
 
         {/* I'm Safe button */}
         <button
           onClick={handleImSafe}
-          className="w-full bg-transparent border-2 border-white/50 text-white font-semibold py-3 px-6 rounded-full flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
+          className="w-full bg-transparent border-2 border-white/40 text-white font-semibold py-3 px-6 rounded-full flex items-center justify-center gap-2 hover:bg-white/10 transition-colors backdrop-blur-sm"
         >
           ✅ I'm Safe — End SOS
         </button>
