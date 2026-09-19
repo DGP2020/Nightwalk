@@ -1,4 +1,26 @@
 /**
+ * Generates an encoded WhatsApp deep-link URL for a given contact.
+ *
+ * @param {string} phone - Contact phone number
+ * @param {string} beaconUrl - Live tracking URL
+ * @returns {string} WhatsApp URL
+ */
+export const buildWhatsAppUrl = (phone, beaconUrl) => {
+  const message = `🚨 SOS Alert! I need help. Track my live location here: ${beaconUrl}`;
+  const cleanPhone = (phone || '').replace(/\D/g, '');
+  return cleanPhone
+    ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+    : `https://wa.me/?text=${encodeURIComponent(message)}`;
+};
+
+/**
+ * Safely opens an external URL in a new window with tabnabbing protection.
+ */
+export const safeOpen = (url) => {
+  return window.open(url, '_blank', 'noopener,noreferrer');
+};
+
+/**
  * Dispatches SOS alerts to trusted contacts via WhatsApp deep-links
  * and/or the Web Share API.
  *
@@ -8,7 +30,7 @@
 export const shareAlert = async (beaconUrl, contacts = []) => {
   const message = `🚨 SOS Alert! I need help. Track my live location here: ${beaconUrl}`;
 
-  // Strategy 1: Web Share API (Android Chrome — picks any app)
+  // Strategy 1: Web Share API (Android Chrome / iOS Safari — native share sheet)
   if (navigator.share) {
     try {
       await navigator.share({
@@ -19,24 +41,27 @@ export const shareAlert = async (beaconUrl, contacts = []) => {
       return { method: 'webshare', success: true };
     } catch (err) {
       if (err.name !== 'AbortError') {
-        console.error('Web Share failed:', err);
+        console.warn('Web Share failed or unsupported:', err);
       }
       // Fall through to WhatsApp if user cancelled or it errored
     }
   }
 
   // Strategy 2: WhatsApp deep-link to the first trusted contact
-  if (contacts.length > 0) {
+  if (contacts && contacts.length > 0) {
     const first = contacts[0];
-    // Strip all non-digit characters from phone number
-    const phone = first.phone.replace(/\D/g, '');
-    const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-    return { method: 'whatsapp', contact: first.name, remaining: contacts.slice(1) };
+    const whatsappUrl = buildWhatsAppUrl(first.phone, beaconUrl);
+    safeOpen(whatsappUrl);
+    return {
+      method: 'whatsapp',
+      success: true,
+      contact: first.name,
+      remaining: contacts.slice(1),
+    };
   }
 
   // Strategy 3: Generic WhatsApp share without a specific number
-  const genericUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-  window.open(genericUrl, '_blank');
-  return { method: 'whatsapp-generic', success: true };
+  const genericUrl = buildWhatsAppUrl('', beaconUrl);
+  safeOpen(genericUrl);
+  return { method: 'whatsapp-generic', success: true, remaining: [] };
 };
