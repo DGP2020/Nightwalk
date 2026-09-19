@@ -12,11 +12,17 @@ html, body, #root {
   overflow: hidden;
 }
 
-/* Leaflet map full height */
+/* Leaflet map full height & dark background */
 .leaflet-container {
   width: 100%;
   height: 100%;
   z-index: 0;
+  background-color: #0a0f1d !important;
+}
+
+/* Tactical Dark Night Mode for Free OpenStreetMap Tiles (Zero Watermarks / No API Key Required) */
+.dark-tiles {
+  filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(110%);
 }
 
 /* === Night Sky Animated Background === */

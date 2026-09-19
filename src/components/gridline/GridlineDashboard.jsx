@@ -42,6 +42,7 @@ const MapUpdater = ({ position }) => {
   useEffect(() => {
     if (position) {
       map.setView(position, map.getZoom());
+      map.invalidateSize();
     }
   }, [position, map]);
   return null;
@@ -431,8 +432,10 @@ export default function GridlineDashboard({
                         zoomControl={false}
                       >
                         <TileLayer
-                          attribution='&copy; CARTO'
-                          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          className="dark-tiles"
+                          maxZoom={19}
                         />
                         <Marker position={position} icon={redIcon}>
                           <Popup>📍 Current GPS Location</Popup>
@@ -576,8 +579,10 @@ export default function GridlineDashboard({
                   zoomControl={true}
                 >
                   <TileLayer
-                    attribution='&copy; CARTO'
-                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    className="dark-tiles"
+                    maxZoom={19}
                   />
                   <Marker position={position} icon={redIcon}>
                     <Popup>

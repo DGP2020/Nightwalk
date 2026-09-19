@@ -21,11 +21,14 @@ const redIcon = new L.Icon({
   iconAnchor: [12, 41],
 });
 
-/** Smoothly re-centres the map whenever position changes â€” no full remount. */
+/** Smoothly re-centres the map whenever position changes — no full remount. */
 const MapUpdater = ({ position }) => {
   const map = useMap();
   useEffect(() => {
-    if (position) map.setView(position, map.getZoom());
+    if (position) {
+      map.setView(position, map.getZoom());
+      map.invalidateSize();
+    }
   }, [position, map]);
   return null;
 };
@@ -190,8 +193,10 @@ const BeaconView = ({ sessionId }) => {
             zoomControl={false}
           >
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              className="dark-tiles"
+              maxZoom={19}
             />
             {/* Movement trail polyline */}
             {polylinePositions.length > 0 && (
