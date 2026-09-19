@@ -21,6 +21,7 @@ import {
   UserPlus,
   Users,
   Wifi,
+  X,
   Zap,
 } from "lucide-react";
 import { WorkspacesIcon, SidebarToggleIcon, GridlineLogo } from "./icons";
@@ -61,7 +62,25 @@ export default function GridlineDashboard({
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("nightwalk_sidebar_collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [docModal, setDocModal] = useState(null); // null | 'license' | 'privacy' | 'status'
   const searchInputRef = useRef(null);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("nightwalk_sidebar_collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // Update time every second
   useEffect(() => {
@@ -116,19 +135,49 @@ export default function GridlineDashboard({
       {/* ========================================================================= */}
       {/* DESKTOP SIDEBAR */}
       {/* ========================================================================= */}
-      <aside className="hidden md:flex flex-col justify-between w-18 lg:w-64 border-r border-slate-800/80 bg-[#0d1424]/95 backdrop-blur-md z-30 shrink-0 select-none">
+      <aside
+        className={`hidden md:flex flex-col justify-between ${
+          sidebarCollapsed ? "w-20" : "w-64"
+        } border-r border-slate-800/80 bg-[#0d1424]/95 backdrop-blur-md z-30 shrink-0 select-none transition-all duration-300 ease-in-out`}
+      >
         <div>
-          {/* Logo */}
-          <div className="flex h-18 items-center px-4 lg:px-6 border-b border-slate-800/80">
-            <GridlineLogo showName className="hidden lg:flex" />
-            <GridlineLogo compact className="flex lg:hidden" />
+          {/* Logo & Toggle Header */}
+          <div
+            className={`flex h-18 items-center ${
+              sidebarCollapsed ? "justify-center px-2" : "justify-between px-4 lg:px-6"
+            } border-b border-slate-800/80`}
+          >
+            {!sidebarCollapsed ? (
+              <>
+                <GridlineLogo showName />
+                <button
+                  onClick={toggleSidebar}
+                  aria-label="Collapse sidebar"
+                  title="Collapse sidebar"
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/70 transition-colors"
+                >
+                  <SidebarToggleIcon className="size-5" />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={toggleSidebar}
+                aria-label="Expand sidebar"
+                title="Expand sidebar"
+                className="p-1.5 text-slate-400 hover:text-teal-400 rounded-lg hover:bg-slate-800/70 transition-colors flex items-center justify-center"
+              >
+                <SidebarToggleIcon className="size-6 text-teal-400" />
+              </button>
+            )}
           </div>
 
           {/* Navigation Links */}
           <nav className="flex flex-col gap-1.5 p-3">
-            <div className="hidden lg:block px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-slate-400">
-              Operations
-            </div>
+            {!sidebarCollapsed && (
+              <div className="px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-slate-400">
+                Operations
+              </div>
+            )}
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -136,14 +185,21 @@ export default function GridlineDashboard({
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-medium transition-all ${
+                  title={sidebarCollapsed ? item.label : undefined}
+                  className={`flex items-center ${
+                    sidebarCollapsed ? "justify-center px-2 py-3" : "gap-3.5 px-3.5 py-3"
+                  } rounded-xl text-sm font-medium transition-all ${
                     isActive
                       ? "bg-teal-500/15 text-teal-400 border border-teal-500/30 shadow-sm"
                       : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                   }`}
                 >
-                  <Icon className={`size-5 shrink-0 ${isActive ? "text-teal-400" : "text-slate-400"}`} />
-                  <span className="hidden lg:inline">{item.label}</span>
+                  <Icon
+                    className={`size-5 shrink-0 ${
+                      isActive ? "text-teal-400" : "text-slate-400"
+                    }`}
+                  />
+                  {!sidebarCollapsed && <span>{item.label}</span>}
                 </button>
               );
             })}
@@ -155,19 +211,25 @@ export default function GridlineDashboard({
           {/* Quick SOS Trigger in sidebar */}
           <button
             onClick={onTriggerSOS}
-            className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-900/30 transition-all active:scale-95"
+            title={sidebarCollapsed ? "TRIGGER SOS" : undefined}
+            className={`w-full bg-red-600 hover:bg-red-500 text-white font-bold ${
+              sidebarCollapsed ? "py-3 px-2 justify-center" : "py-2.5 px-3"
+            } rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-900/30 transition-all active:scale-95`}
           >
             <ShieldAlert className="size-4 shrink-0" />
-            <span className="hidden lg:inline">TRIGGER SOS</span>
+            {!sidebarCollapsed && <span>TRIGGER SOS</span>}
           </button>
 
           {/* Quick 112 Call */}
           <a
             href="tel:112"
-            className="w-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-medium py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors"
+            title={sidebarCollapsed ? "DIAL 112" : undefined}
+            className={`w-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-medium ${
+              sidebarCollapsed ? "py-2.5 px-2 justify-center" : "py-2 px-3"
+            } rounded-xl text-xs flex items-center justify-center gap-2 transition-colors`}
           >
             <Phone className="size-3.5 shrink-0 text-teal-400" />
-            <span className="hidden lg:inline font-mono">DIAL 112</span>
+            {!sidebarCollapsed && <span className="font-mono">DIAL 112</span>}
           </a>
         </div>
       </aside>
@@ -191,21 +253,6 @@ export default function GridlineDashboard({
             {/* Mobile logo when sidebar hidden */}
             <div className="md:hidden">
               <GridlineLogo compact />
-            </div>
-
-            {/* Status Strip */}
-            <div className="hidden sm:flex h-7 items-center overflow-hidden rounded-lg bg-slate-900/90 border border-slate-800 font-mono text-[11px] tracking-tight">
-              <span className="flex h-full items-center gap-2 border-r border-slate-800 px-3 text-teal-400 font-semibold">
-                <span className="size-1.5 rounded-full bg-teal-400 animate-pulse" />
-                3-SHAKE ARMED
-              </span>
-              <span className="flex h-full items-center gap-1.5 border-r border-slate-800 px-3 text-emerald-400">
-                <Wifi className="size-3" />
-                GPS LOCK
-              </span>
-              <span className="flex h-full items-center px-3 text-slate-400">
-                FIREBASE ACTIVE
-              </span>
             </div>
           </div>
 
@@ -338,12 +385,10 @@ export default function GridlineDashboard({
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-2 font-mono text-xs">
-                <span className="size-2 rounded-full bg-emerald-400 animate-ping" />
-                <span className="text-slate-300">SYSTEM HEALTH:</span>
-                <span className="text-emerald-400 font-bold">OPTIMAL</span>
-              </div>
+            <div className="hidden sm:flex items-center gap-2 font-mono text-xs text-slate-400">
+              <span className="bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 text-[11px] text-teal-400 font-semibold">
+                KINETIC SENSOR READY
+              </span>
             </div>
           </div>
 
@@ -706,6 +751,178 @@ export default function GridlineDashboard({
             </div>
           )}
         </main>
+
+        {/* ========================================================================= */}
+        {/* PERSISTENT BOTTOM BAR */}
+        {/* ========================================================================= */}
+        <footer className="h-10 border-t border-slate-800/80 bg-[#0d1424]/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between text-[11px] font-mono shrink-0 z-20 select-none">
+          {/* Left Branding matching user reference */}
+          <div className="flex items-center gap-2 text-slate-400">
+            <span className="tracking-wider">GUARDIAN BEACON © 2026</span>
+          </div>
+
+          {/* Right Status and Links */}
+          <div className="flex items-center gap-3.5 sm:gap-5 text-slate-400">
+            {/* Single clean Status button */}
+            <button
+              onClick={() => setDocModal("status")}
+              className="flex items-center gap-2 hover:text-emerald-400 transition-colors"
+              title="View System Status & Telemetry"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+              </span>
+              <span>Status</span>
+            </button>
+
+            <span className="text-slate-700">|</span>
+
+            <button
+              onClick={() => setDocModal("license")}
+              className="hover:text-teal-400 transition-colors"
+            >
+              License
+            </button>
+
+            <span className="text-slate-700">|</span>
+
+            <button
+              onClick={() => setDocModal("privacy")}
+              className="hover:text-teal-400 transition-colors"
+            >
+              Privacy Policy
+            </button>
+          </div>
+        </footer>
+
+        {/* ========================================================================= */}
+        {/* DOCUMENT & STATUS MODAL */}
+        {/* ========================================================================= */}
+        {docModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="relative w-full max-w-xl bg-[#0d1424] border border-slate-800 rounded-2xl p-6 shadow-2xl text-slate-200 flex flex-col max-h-[85vh]">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2 font-mono uppercase tracking-wider">
+                  {docModal === "license" && "📜 Open Source License (BSD 3-Clause)"}
+                  {docModal === "privacy" && "🛡️ Privacy Policy"}
+                  {docModal === "status" && "⚡ System Operations & Status"}
+                </h3>
+                <button
+                  onClick={() => setDocModal(null)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto py-4 font-mono text-xs text-slate-300 leading-relaxed whitespace-pre-line space-y-3">
+                {docModal === "license" && (
+                  <div>
+                    <p className="font-bold text-white mb-2">BSD 3-Clause License</p>
+                    <p className="text-slate-400 mb-3">Copyright (c) 2026, Daniel</p>
+                    <p className="mb-3">
+                      Redistribution and use in source and binary forms, with or without
+                      modification, are permitted provided that the following conditions are met:
+                    </p>
+                    <p className="mb-2 pl-2 border-l border-slate-700">
+                      1. Redistributions of source code must retain the above copyright notice, this
+                      list of conditions and the following disclaimer.
+                    </p>
+                    <p className="mb-2 pl-2 border-l border-slate-700">
+                      2. Redistributions in binary form must reproduce the above copyright notice,
+                      this list of conditions and the following disclaimer in the documentation
+                      and/or other materials provided with the distribution.
+                    </p>
+                    <p className="mb-3 pl-2 border-l border-slate-700">
+                      3. Neither the name of the copyright holder nor the names of its
+                      contributors may be used to endorse or promote products derived from
+                      this software without specific prior written permission.
+                    </p>
+                    <p className="text-slate-400 text-[11px] leading-normal">
+                      THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &quot;AS IS&quot;
+                      AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+                      IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+                      DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+                      FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+                      DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+                      SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+                      CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+                      OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+                      OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+                    </p>
+                  </div>
+                )}
+
+                {docModal === "privacy" && (
+                  <div className="space-y-3">
+                    <p className="font-bold text-white">Privacy-First Architecture</p>
+                    <p>
+                      1. <strong className="text-teal-400">Live GPS Coordinates:</strong> Only recorded and streamed during an active SOS emergency session or local radar preview. Coordinates are never tracked in the background prior to emergency activation.
+                    </p>
+                    <p>
+                      2. <strong className="text-teal-400">Trusted Contacts:</strong> Up to 3 emergency contacts are stored strictly in your browser&apos;s local storage. They are never transmitted to third-party databases or marketing servers.
+                    </p>
+                    <p>
+                      3. <strong className="text-teal-400">Kinetic Sensor Telemetry:</strong> Accelerometer data is processed locally on your device in real-time to detect the 3-shake gesture. No raw motion data leaves your device.
+                    </p>
+                    <p>
+                      4. <strong className="text-teal-400">Session Termination:</strong> Tapping &quot;I&apos;m Safe&quot; ends the session immediately and ceases all location streaming.
+                    </p>
+                  </div>
+                )}
+
+                {docModal === "status" && (
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                      <span className="text-slate-400">System Core Health:</span>
+                      <span className="text-emerald-400 font-bold">OPTIMAL (100%)</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                      <span className="text-slate-400">Kinetic 3-Shake Sensor:</span>
+                      <span className={`font-bold ${hasPermission ? "text-teal-400" : "text-amber-400"}`}>
+                        {hasPermission ? "3-SHAKE ARMED & ACTIVE" : "PERMISSION REQUIRED"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                      <span className="text-slate-400">GPS Satellite Lock:</span>
+                      <span className={`font-bold ${liveLocation ? "text-emerald-400" : "text-amber-400"}`}>
+                        {liveLocation ? `GPS LOCK (±${Math.round(liveLocation.accuracy || 10)}m)` : "ACQUIRING FIX..."}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                      <span className="text-slate-400">Firebase Cloud Telemetry:</span>
+                      <span className="text-teal-400 font-bold">FIREBASE ACTIVE (ONLINE)</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                      <span className="text-slate-400">Cartography Stream:</span>
+                      <span className="text-teal-400 font-bold">OPENSTREETMAP TACTICAL (ONLINE)</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-slate-800 text-xs">
+                {docModal !== "status" ? (
+                  <a
+                    href={docModal === "license" ? "/LICENSE.md" : "/PRIVACY.md"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-teal-400 hover:underline flex items-center gap-1 font-mono"
+                  >
+                    View {docModal === "license" ? "license.md" : "privacy policy.md"} <ArrowUpRight className="size-3.5" />
+                  </a>
+                ) : <span />}
+                <button
+                  onClick={() => setDocModal(null)}
+                  className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-mono text-xs transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
