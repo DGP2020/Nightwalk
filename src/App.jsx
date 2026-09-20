@@ -8,7 +8,6 @@ import { useShakeDetection } from './hooks/useShakeDetection';
 import { useLiveLocation } from './hooks/useLiveLocation';
 import { loadTrustedContacts } from './components/TrustedContacts';
 import { getIncidents } from './utils/incidentLog';
-import { ClipboardList } from 'lucide-react';
 
 function App() {
   const [sosActive, setSosActive] = useState(false);
@@ -31,7 +30,10 @@ function App() {
     }
   }, [sosActive, countdownActive]);
 
-  const { requestPermission, hasPermission, error: shakeError } = useShakeDetection(onShake);
+  const { requestPermission, hasPermission, error: shakeError, shakeCount } = useShakeDetection(onShake, {
+    enabled: !sosActive && !countdownActive,
+    threshold: 16.5,
+  });
 
   // Countdown completed → activate confirmed emergency SOS
   const handleCountdownComplete = useCallback(() => {
@@ -66,30 +68,18 @@ function App() {
   return (
     <div className="h-screen w-full relative overflow-hidden bg-[#0a0f1d] text-slate-100">
 
-      {/* Incident History trigger — floating icon in top-right corner */}
-      <button
-        id="incident-history-button"
-        onClick={() => setHistoryOpen(true)}
-        className="absolute top-4 right-4 z-50 relative p-2 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-        aria-label="View incident history"
-      >
-        <ClipboardList size={20} />
-        {incidentCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full">
-            {incidentCount > 9 ? '9+' : incidentCount}
-          </span>
-        )}
-      </button>
-
       {/* Primary Gridline Dashboard */}
       <GridlineDashboard
         onTriggerSOS={handleSOSTap}
         hasPermission={hasPermission}
         requestPermission={requestPermission}
         shakeError={shakeError}
+        shakeCount={shakeCount}
         liveLocation={liveLocation}
         contacts={contacts}
         setContacts={setContacts}
+        onOpenHistory={() => setHistoryOpen(true)}
+        incidentCount={incidentCount}
       />
 
       {/* 5-Second Cancellation Countdown Overlay */}

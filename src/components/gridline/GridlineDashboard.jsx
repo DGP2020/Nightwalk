@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   CalendarDays,
   CheckCircle2,
+  ClipboardList,
   Clock,
   Command,
   Compass,
@@ -54,9 +55,12 @@ export default function GridlineDashboard({
   hasPermission,
   requestPermission,
   shakeError,
+  shakeCount = 0,
   liveLocation,
   contacts,
   setContacts,
+  onOpenHistory,
+  incidentCount,
 }) {
   const [activeTab, setActiveTab] = useState("overview"); // "overview" | "map" | "contacts" | "telemetry"
   const [searchQuery, setSearchQuery] = useState("");
@@ -119,6 +123,7 @@ export default function GridlineDashboard({
     { id: "map", label: "Live Radar Map", shortLabel: "Radar", icon: Compass },
     { id: "contacts", label: "Safety Circle", shortLabel: "Contacts", icon: Users },
     { id: "telemetry", label: "Sensor & Telemetry", shortLabel: "Sensors", icon: Radio },
+    { id: "history", label: "Incident History", shortLabel: "History", icon: ClipboardList, badge: incidentCount },
   ];
 
   return (
@@ -181,12 +186,15 @@ export default function GridlineDashboard({
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
+              const handleClick = item.id === "history"
+                ? () => { onOpenHistory?.(); }
+                : () => setActiveTab(item.id);
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={handleClick}
                   title={sidebarCollapsed ? item.label : undefined}
-                  className={`flex items-center ${
+                  className={`relative flex items-center ${
                     sidebarCollapsed ? "justify-center px-2 py-3" : "gap-3.5 px-3.5 py-3"
                   } rounded-xl text-sm font-medium transition-all ${
                     isActive
@@ -200,6 +208,15 @@ export default function GridlineDashboard({
                     }`}
                   />
                   {!sidebarCollapsed && <span>{item.label}</span>}
+                  {item.badge > 0 && (
+                    <span className={`${
+                      sidebarCollapsed
+                        ? "absolute -top-0.5 -right-0.5"
+                        : "ml-auto"
+                    } w-4 h-4 bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full`}>
+                      {item.badge > 9 ? "9+" : item.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -322,13 +339,13 @@ export default function GridlineDashboard({
                   {navItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = activeTab === item.id;
+                    const handleClick = item.id === "history"
+                      ? () => { setMobileMenuOpen(false); onOpenHistory?.(); }
+                      : () => { setActiveTab(item.id); setMobileMenuOpen(false); };
                     return (
                       <button
                         key={item.id}
-                        onClick={() => {
-                          setActiveTab(item.id);
-                          setMobileMenuOpen(false);
-                        }}
+                        onClick={handleClick}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium ${
                           isActive
                             ? "bg-teal-500/15 text-teal-400 border border-teal-500/30"
@@ -337,6 +354,11 @@ export default function GridlineDashboard({
                       >
                         <Icon className="size-5" />
                         <span>{item.label}</span>
+                        {item.badge > 0 && (
+                          <span className="ml-auto w-5 h-5 bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full">
+                            {item.badge > 9 ? "9+" : item.badge}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -374,7 +396,7 @@ export default function GridlineDashboard({
             <div>
               <div className="flex items-center gap-2 text-xs font-mono text-teal-400 uppercase tracking-wider mb-1">
                 <Shield className="size-3.5" />
-                GUARDIAN GRIDLINE PEDESTRIAN DEFENSE
+                NIGHTGUARDIAN PEDESTRIAN DEFENSE
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
                 Safety Operations Center
@@ -385,11 +407,7 @@ export default function GridlineDashboard({
               </p>
             </div>
 
-            <div className="hidden sm:flex items-center gap-2 font-mono text-xs text-slate-400">
-              <span className="bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 text-[11px] text-teal-400 font-semibold">
-                KINETIC SENSOR READY
-              </span>
-            </div>
+
           </div>
 
           {/* ========================================================================= */}
@@ -439,16 +457,37 @@ export default function GridlineDashboard({
                       <span className="text-3xl font-black tracking-widest text-white">SOS</span>
                       <span className="text-[10px] font-mono tracking-wider text-red-100 uppercase opacity-90">TAP TO ALERT</span>
                     </button>
-                    <p className="text-xs font-mono text-slate-400 mt-4 flex items-center gap-1.5">
-                      <Smartphone className="size-3.5 text-teal-400" />
-                      Multi-shake: 3 peaks within 2s required
-                    </p>
+                    <div className="mt-4 flex flex-col items-center gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-slate-300 flex items-center gap-1.5">
+                          <Smartphone className="size-3.5 text-teal-400" />
+                          Rhythmic 3-Shake:
+                        </span>
+                        <div className="flex items-center gap-1.5 bg-slate-900/90 px-2 py-1 rounded-full border border-slate-800">
+                          {[1, 2, 3].map((step) => (
+                            <span
+                              key={step}
+                              className={`size-2 rounded-full transition-all duration-200 ${
+                                shakeCount >= step
+                                  ? "bg-red-500 scale-125 shadow-[0_0_8px_rgba(239,68,68,0.9)]"
+                                  : "bg-slate-700"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-400">
+                        {shakeCount > 0
+                          ? `Peak ${shakeCount}/3 registered — shake again!`
+                          : "3 rhythmic peaks within 2.5s required"}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Tile Bottom Status */}
                   <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between text-xs font-mono">
-                    <span className="text-slate-400">Accelerometer Filter:</span>
-                    <span className="text-teal-400 font-bold">ANTI-FALSE-ALARM ON</span>
+                    <span className="text-slate-400">Kinetic Accelerometer Filter:</span>
+                    <span className="text-teal-400 font-bold">PEAK-VALLEY ARMED</span>
                   </div>
                 </div>
 
@@ -758,7 +797,7 @@ export default function GridlineDashboard({
         <footer className="h-10 border-t border-slate-800/80 bg-[#0d1424]/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between text-[11px] font-mono shrink-0 z-20 select-none">
           {/* Left Branding matching user reference */}
           <div className="flex items-center gap-2 text-slate-400">
-            <span className="tracking-wider">GUARDIAN BEACON © 2026</span>
+            <span className="tracking-wider">NIGHTGUARDIAN © 2026</span>
           </div>
 
           {/* Right Status and Links */}

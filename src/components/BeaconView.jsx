@@ -160,12 +160,16 @@ const BeaconView = ({ sessionId }) => {
       {/* Header */}
       <div className="bg-gradient-to-r from-red-700 to-red-600 text-white px-4 py-3 flex items-center justify-between shadow-md z-[1000]">
         <div className="flex items-center gap-3">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
-          </span>
+          <img
+            src="/images.jpeg"
+            alt="Guardian Beacon"
+            className="w-9 h-9 rounded-xl object-cover border border-white/30 shadow-sm shrink-0"
+          />
           <div>
-            <p className="font-bold text-sm tracking-wide">🚨 LIVE SOS TRACKING</p>
+            <p className="font-bold text-sm tracking-wide flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-emerald-300 animate-pulse inline-block" />
+              LIVE SOS TRACKING
+            </p>
             {position && (
               <p className="text-xs text-red-200 font-mono">
                 {position[0].toFixed(5)}, {position[1].toFixed(5)}
@@ -250,7 +254,7 @@ const BeaconView = ({ sessionId }) => {
       {/* Persistent Bottom Bar */}
       <footer className="h-10 w-full border-t border-slate-800/80 bg-[#0d1424]/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between text-[11px] font-mono shrink-0 select-none z-40">
         <div className="text-slate-400 flex items-center gap-2">
-          <span>GUARDIAN BEACON</span>
+          <span>NIGHTGUARDIAN</span>
           <span className="text-slate-600">© 2026</span>
         </div>
 
