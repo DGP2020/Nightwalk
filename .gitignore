@@ -6,5 +6,9 @@ dist-ssr
 .env.local
 .env.production
 firestore.rules
+<<<<<<< HEAD
 walkthrough*.*
+=======
+walkthrough.md
+>>>>>>> 985dba48d7924305d10321ac6b1f19f61bccc82c
 repomix-output-Bit and Build google challenge.zip.xml

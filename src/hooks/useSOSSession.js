@@ -25,14 +25,19 @@ export const useSOSSession = (isActive) => {
 
   const { location, error: locationError } = useLiveLocation(isActive);
 
+  const lastPushTimeRef = useRef(0);
+
   // --- Step 1: Create the Firestore session when SOS activates ---
   useEffect(() => {
     if (!isActive) return;
 
     const startSession = async () => {
       if (!db) {
-        // Firebase not configured — generate a dummy ID for offline demo mode
-        const demoId = `demo-${Date.now()}`;
+        // Firebase not configured — generate a collision-resistant demo ID
+        const randomSuffix = typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID().slice(0, 8)
+          : Math.random().toString(36).substring(2, 10);
+        const demoId = `demo-${randomSuffix}`;
         setSessionId(demoId);
         setBeaconUrl(`${window.location.origin}${window.location.pathname}?beacon=${demoId}`);
         console.warn('⚠️ Firestore not available — running in demo mode. Beacon URL is local-only.');
@@ -65,21 +70,44 @@ export const useSOSSession = (isActive) => {
     startSession();
   }, [isActive]);
 
-  // --- Step 2: Push location updates to Firestore whenever location changes ---
+  // --- Step 2: Push location updates to Firestore whenever location changes (paced at ~1.5s) ---
   useEffect(() => {
     if (!isActive || !location || !sessionDocRef.current || !db) return;
 
+    // Coordinate sanity check
+    if (
+      typeof location.lat !== 'number' ||
+      typeof location.lng !== 'number' ||
+      location.lat < -90 ||
+      location.lat > 90 ||
+      location.lng < -180 ||
+      location.lng > 180
+    ) {
+      return;
+    }
+
+    const now = Date.now();
+    // Gentle 1.5s pace to prevent Firestore single-document write contention while keeping UI live
+    if (now - lastPushTimeRef.current < 1500) return;
+
     const pushLocation = async () => {
       try {
+        lastPushTimeRef.current = now;
+        const normalizedCoord = {
+          lat: Number(location.lat.toFixed(6)),
+          lng: Number(location.lng.toFixed(6)),
+          accuracy: Math.round(location.accuracy || 0),
+          t: location.timestamp || now,
+        };
+
         await updateDoc(sessionDocRef.current, {
-          coords: arrayUnion({
-            lat: location.lat,
-            lng: location.lng,
-            accuracy: location.accuracy,
-            t: location.timestamp,
-          }),
+          coords: arrayUnion(normalizedCoord),
           // Keep the latest coord at the top level for fast BeaconView reads
-          lastCoord: { lat: location.lat, lng: location.lng },
+          lastCoord: {
+            lat: normalizedCoord.lat,
+            lng: normalizedCoord.lng,
+            accuracy: normalizedCoord.accuracy,
+          },
           lastUpdated: serverTimestamp(),
         });
         coordCountRef.current += 1;
