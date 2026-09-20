@@ -2,33 +2,34 @@
 
 > Built for Bit and Build Hackathon · Problem Statement #4
 
-A mobile-first Progressive Web App that protects night-time commuters through two core safety features: instant shake-triggered SOS and live location sharing with trusted contacts.
+A mobile-first Progressive Web Application (PWA) that protects night-time commuters through discreet shake-triggered SOS, a 5-second false-alarm countdown latch, real-time location telemetry, and zero-install live tracking for trusted contacts.
 
 ---
 
-## Problem
+## Problem Statement
 
-Walking home late at night is risky — especially in poorly lit or isolated areas. In a moment of real distress, manually opening an app and texting someone for help is too slow and cognitively demanding.
+Walking alone at night, through unfamiliar neighborhoods, or during sudden emergencies poses significant personal safety risks. In high-threat or distress situations, individuals face critical barriers:
+
+1. **Slow Reaction & Device Barriers:** Unlocking a smartphone, opening contact lists, or dialing emergency services requires fine motor skills, screen visibility, and precious seconds that a person under duress or physical threat rarely has.
+2. **Lack of Continuous, Real-Time Context:** Traditional SMS or emergency calls broadcast a static, one-time alert without real-time tracking, leaving emergency contacts blind if the individual is on the move.
+3. **App Barrier & Friction:** Many proprietary safety apps require both user and contacts to install heavy native apps, register accounts, and grant invasive background permissions—creating high adoption friction during emergencies.
 
 ---
 
-## Solution
+## Solution Description
 
-**Guardian Beacon** reduces the response time for a safety alert to a single physical action — shaking your phone.
+**Guardian Beacon** reduces emergency activation to a single physical gesture: shaking your phone. It establishes an instant, temporary live beacon that guardians can follow in real time from any browser with zero installation required.
 
 ### Core Features
 
-**Shake-to-SOS**
-Uses the device accelerometer (`DeviceMotionEvent`) to detect aggressive shaking. Instantly triggers a full-screen SOS mode with live GPS tracking. Also accessible via a large on-screen panic button as a tap fallback.
-
-**Guardian Beacon (Live Tracking)**
-When SOS activates, a unique tracking session is created in Firebase Firestore. A shareable link is generated and dispatched to pre-saved trusted contacts via WhatsApp deep-link (`wa.me`) or the Web Share API. The contact opens the link and watches a live-updating map — no app install, no login.
-
-**Trusted Contacts**
-Users pre-save up to 3 emergency contacts (name + phone with country code) in localStorage. On SOS, contacts receive a WhatsApp message pre-filled with the live tracking URL.
-
-**PWA**
-Installable to the Android home screen via `manifest.json` for one-tap access.
+* **Discreet Shake-to-SOS:** Uses the device accelerometer (`DeviceMotionEvent`) to detect physical shakes. Works covertly without needing to look at or unlock the screen.
+* **5-Second False Alarm Latch:** Initiates a 5-second cancellation countdown with haptic feedback (`navigator.vibrate`) before full emergency dispatch, preventing accidental triggers while maintaining quick response.
+* **Live Guardian Beacon (Real-Time Tracking):** Generates an ephemeral session in Firebase Firestore streaming live GPS coordinates, heading, accuracy, and device battery level.
+* **Zero-Install Guardian View:** Trusted contacts receive a WhatsApp (`wa.me`) or Web Share link and monitor the live tracking map directly in their browser without downloading an app or logging in.
+* **Gridline Telemetry Dashboard:** A tactical, dark-themed UI displaying live GPS stats, satellite signal quality, motion sensor diagnostics, and quick-action emergency dials.
+* **Incident History & Audit Trail:** Automatically records timestamped logs of SOS triggers, duration, and status locally for post-incident review and accountability.
+* **Trusted Contacts Management:** Pre-configure up to 3 emergency contacts stored locally with instant alert dispatch.
+* **Store-Ready PWA:** Features a custom cache-first Service Worker, maskable PNG icons (192×192, 512×512), mobile/desktop preview screenshots, and shortcut actions for offline reliability and home screen installation.
 
 ---
 
@@ -37,11 +38,12 @@ Installable to the Android home screen via `manifest.json` for one-tap access.
 | Layer | Technology |
 |---|---|
 | Frontend | React 18, Vite 5 |
-| Styling | Tailwind CSS v3 |
+| Styling | Tailwind CSS v3, Lucide React |
 | Maps | Leaflet.js, React-Leaflet |
-| Real-time DB | Firebase Firestore (onSnapshot) |
-| Sensors | DeviceMotionEvent, Geolocation API |
-| Alert Dispatch | WhatsApp deep-links, Web Share API |
+| Real-time DB | Firebase Firestore (`onSnapshot`, real-time sync) |
+| Device APIs | `DeviceMotionEvent`, Geolocation API, Vibration API, Web Share API |
+| Offline / PWA | Service Worker (`CacheStorage`), Web App Manifest |
+| Alert Dispatch | WhatsApp deep-links (`wa.me`), Web Share API |
 
 ---
 
@@ -54,58 +56,70 @@ Installable to the Android home screen via `manifest.json` for one-tap access.
 npm install
 
 # 2. Add Firebase config
-# Edit .env with your Firebase project values (see .env.example)
+# Copy .env.example to .env and fill in your Firebase project values
+cp .env.example .env
 
-# 3. Start dev server
+# 3. Start development server
 npm run dev
 ```
 
 Open `http://localhost:5173`.
 
-> Note: Shake detection and Geolocation require HTTPS. For testing on a real device, deploy to Vercel or use `npx localtunnel --port 5173`.
+> **Note:** Shake detection (`DeviceMotionEvent`), Geolocation, and Service Workers require HTTPS on mobile devices. For testing on a physical phone, deploy to Vercel or expose your local port with a tunnel like `ngrok` or `localtunnel`.
 
 ---
 
-## Firebase Setup (for evaluators running locally)
+## Firebase Setup (for Evaluators Running Locally)
 
-1. Create a project at [console.firebase.google.com](https://console.firebase.google.com)
-2. Enable Firestore in **Test Mode**
-3. Register a Web App and copy the config object
-4. Paste values into `.env` (see `.env.example` for the required keys)
-5. In Firestore → Rules, set `allow read, write: if true;`
+1. Go to [console.firebase.google.com](https://console.firebase.google.com) and create a project.
+2. Under **Build → Firestore Database**, click **Create Database** (start in **Test Mode**).
+3. Register a **Web App** in project settings and copy the Firebase configuration keys.
+4. Add the credentials to your `.env` file (see `.env.example`).
+5. Ensure your Firestore rules allow session reads/writes (refer to `firestore.rules`).
 
 ---
 
 ## Demo Flow
 
-1. Open the app on a phone (over HTTPS)
-2. Add a trusted contact with their phone number
-3. Shake the phone or tap the SOS button
-4. Tap "Alert My Contacts" — WhatsApp opens pre-filled with a live tracking link
-5. The contact opens the link and sees a real-time map of your location
-6. Tap "I'm Safe" to end the session
+```
+User's Phone (PWA)                                Guardian's Phone / PC
+──────────────────                                ─────────────────────
+1. Shake phone or tap SOS
+   ↓
+2. 5s Countdown initiates (haptic buzz)
+   (Allows "I'm OK" cancellation)
+   ↓
+3. SOS confirms → Creates Firestore session
+   Streams GPS & telemetry
+   ↓
+4. Tap "Alert My Contacts" ───────────────────→  Receives WhatsApp message
+                                                  with live tracking URL
+                                                  ↓
+                                                  Opens link in browser:
+                                                  Watches real-time map,
+                                                  speed, and coordinates
+   ↓
+5. User taps "I'm Safe" ──────────────────────→  Beacon marks session as resolved
+   Logged to Incident History
+```
 
 ---
 
-## Architecture
 
-```
-User's Phone                    Guardian's Phone
-─────────────────               ─────────────────
-Shake detected
-→ useSOSSession creates          
-  Firestore document             
-→ useLiveLocation streams   →   BeaconView reads via
-  GPS coords to Firestore        onSnapshot listener
-→ shareAlert sends          →   Opens tracking link
-  WhatsApp deep-link             in browser, no login
-```
+---
+
+## Privacy & Security
+
+- **Ephemeral Sessions:** Location broadcast is active only while an SOS session is live.
+- **No Third-Party Tracking:** No ad trackers, analytics SDKs, or background telemetry.
+- **Local Data Retention:** Trusted contact details and incident history remain on the user's device (`localStorage`).
+- See [PRIVACY.md](PRIVACY.md) for detailed privacy practices.
 
 ---
 
 ## Future Scope
 
-- AI-powered route safety scoring using crime and lighting datasets
-- Crowdsourced safety map with community hazard markers
-- Campus security direct webhook integration
-- Smartwatch / wearable SOS trigger via Bluetooth
+- **AI Safety Routing:** Dynamic route scoring using open crime statistics and urban street lighting indices.
+- **Crowdsourced Hazard Markers:** Community-reported hazard spots and safe-haven hubs.
+- **Campus & Security Webhooks:** Direct integrations with campus police or private security dispatch systems.
+- **Wearable Trigger:** BLE integration with smartwatches or physical panic button accessories.
