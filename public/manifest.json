@@ -1,16 +1,66 @@
 {
   "name": "Guardian Beacon",
   "short_name": "Guardian",
-  "start_url": ".",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#111827",
   "theme_color": "#dc2626",
+  "lang": "en",
+  "dir": "ltr",
   "description": "Shake-to-SOS and live location sharing for safer night walks.",
+  "categories": ["utilities", "lifestyle"],
   "icons": [
     {
-      "src": "/images.jpeg",
-      "sizes": "192x192 512x512",
-      "type": "image/jpeg"
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/screenshot-mobile.png",
+      "sizes": "630x1120",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Guardian Beacon home screen with SOS button and live map"
+    },
+    {
+      "src": "/screenshots/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Guardian Beacon desktop view with contacts and live tracking map"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "SOS Alert",
+      "short_name": "SOS",
+      "description": "Trigger emergency SOS alert",
+      "url": "/?action=sos",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
