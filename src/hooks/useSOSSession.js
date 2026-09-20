@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { collection, doc, setDoc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useLiveLocation } from './useLiveLocation';
+import { saveIncident } from '../utils/incidentLog';
 
 /**
  * Manages the full SOS session lifecycle:
@@ -15,6 +16,12 @@ export const useSOSSession = (isActive) => {
   const [beaconUrl, setBeaconUrl] = useState(null);
   const [firestoreError, setFirestoreError] = useState(null);
   const sessionDocRef = useRef(null);
+  // Track metadata for the incident log
+  const startedAtRef = useRef(null);
+  const coordCountRef = useRef(0);
+  const lastCoordRef = useRef(null);
+  const beaconUrlRef = useRef(null);
+  const sessionIdRef = useRef(null);
 
   const { location, error: locationError } = useLiveLocation(isActive);
 
@@ -41,8 +48,13 @@ export const useSOSSession = (isActive) => {
         });
 
         sessionDocRef.current = newDocRef;
+        startedAtRef.current = Date.now();
+        coordCountRef.current = 0;
+        const url = `${window.location.origin}${window.location.pathname}?beacon=${newDocRef.id}`;
+        beaconUrlRef.current = url;
+        sessionIdRef.current = newDocRef.id;
         setSessionId(newDocRef.id);
-        setBeaconUrl(`${window.location.origin}${window.location.pathname}?beacon=${newDocRef.id}`);
+        setBeaconUrl(url);
         console.log('✅ SOS session created:', newDocRef.id);
       } catch (err) {
         console.error('Failed to create SOS session in Firestore:', err);
@@ -70,6 +82,8 @@ export const useSOSSession = (isActive) => {
           lastCoord: { lat: location.lat, lng: location.lng },
           lastUpdated: serverTimestamp(),
         });
+        coordCountRef.current += 1;
+        lastCoordRef.current = { lat: location.lat, lng: location.lng };
       } catch (err) {
         console.error('Failed to push location to Firestore:', err);
       }
@@ -80,7 +94,34 @@ export const useSOSSession = (isActive) => {
 
   // --- Step 3: End the session ---
   const endSession = useCallback(async () => {
-    if (!sessionDocRef.current || !db) return;
+    const endedAt = Date.now();
+    const startedAt = startedAtRef.current || endedAt;
+    const durationSeconds = Math.round((endedAt - startedAt) / 1000);
+
+    // Save to local incident log regardless of Firestore status
+    if (startedAtRef.current) {
+      saveIncident({
+        id: sessionIdRef.current || `local-${startedAt}`,
+        startedAt,
+        endedAt,
+        durationSeconds,
+        coordCount: coordCountRef.current,
+        lastCoord: lastCoordRef.current,
+        beaconUrl: beaconUrlRef.current,
+      });
+    }
+
+    if (!sessionDocRef.current || !db) {
+      // Reset refs
+      startedAtRef.current = null;
+      coordCountRef.current = 0;
+      lastCoordRef.current = null;
+      beaconUrlRef.current = null;
+      sessionIdRef.current = null;
+      setSessionId(null);
+      setBeaconUrl(null);
+      return;
+    }
 
     try {
       await updateDoc(sessionDocRef.current, {
@@ -92,6 +133,11 @@ export const useSOSSession = (isActive) => {
       console.error('Failed to end SOS session:', err);
     } finally {
       sessionDocRef.current = null;
+      startedAtRef.current = null;
+      coordCountRef.current = 0;
+      lastCoordRef.current = null;
+      beaconUrlRef.current = null;
+      sessionIdRef.current = null;
       setSessionId(null);
       setBeaconUrl(null);
     }

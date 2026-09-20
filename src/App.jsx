@@ -2,11 +2,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import SOSOverlay from './components/SOSOverlay';
 import BeaconView from './components/BeaconView';
 import TrustedContacts from './components/TrustedContacts';
+import IncidentHistoryModal from './components/IncidentHistoryModal';
 import { useShakeDetection } from './hooks/useShakeDetection';
+import { getIncidents } from './utils/incidentLog';
+import { ClipboardList } from 'lucide-react';
 
 function App() {
   const [sosActive, setSosActive] = useState(false);
   const [contacts, setContacts] = useState([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const incidentCount = getIncidents().length;
 
   // Check if this page load is a guardian opening a beacon link
   const beaconId = new URLSearchParams(window.location.search).get('beacon');
@@ -37,15 +42,31 @@ function App() {
           </h1>
           <p className="text-gray-400 text-xs">Tap or shake to trigger SOS</p>
         </div>
-        {hasPermission ? (
-          <span className="text-xs bg-green-900 text-green-400 px-2 py-1 rounded-full font-semibold">
-            ✓ Shake ready
-          </span>
-        ) : (
-          <span className="text-xs bg-yellow-900 text-yellow-400 px-2 py-1 rounded-full font-semibold">
-            ⚠ Motion off
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {hasPermission ? (
+            <span className="text-xs bg-green-900 text-green-400 px-2 py-1 rounded-full font-semibold">
+              ✓ Shake ready
+            </span>
+          ) : (
+            <span className="text-xs bg-yellow-900 text-yellow-400 px-2 py-1 rounded-full font-semibold">
+              ⚠ Motion off
+            </span>
+          )}
+          {/* Incident History trigger — tucked in header */}
+          <button
+            id="incident-history-button"
+            onClick={() => setHistoryOpen(true)}
+            className="relative p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+            aria-label="View incident history"
+          >
+            <ClipboardList size={20} />
+            {incidentCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full">
+                {incidentCount > 9 ? '9+' : incidentCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Scroll content area */}
@@ -103,6 +124,12 @@ function App() {
       <SOSOverlay
         isActive={sosActive}
         onClose={() => setSosActive(false)}
+      />
+
+      {/* Incident History Sidebar */}
+      <IncidentHistoryModal
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
       />
     </div>
   );
